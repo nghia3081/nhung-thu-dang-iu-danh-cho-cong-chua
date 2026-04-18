@@ -247,7 +247,7 @@ export default function App() {
       
       {/* Signature in corner */}
       <div className="absolute top-10 right-10 font-romantic italic opacity-40 text-sm md:text-base pointer-events-none text-accent">
-        Gửi cậu, 19.04.2024
+        Gửi cậu, 19.04.2026
       </div>
 
       <audio 
