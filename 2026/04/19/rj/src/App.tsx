@@ -445,10 +445,6 @@ function InvitationCard({ onReset }: { onReset: () => void }) {
           </h2>
 
           <div className="invitation-gentle-card p-8 space-y-6 font-romantic text-lg italic leading-loose text-text-secondary">
-            <div className="flex gap-4 items-start border-b border-rose-100 pb-5">
-              <Coffee className="w-6 h-6 text-accent shrink-0 mt-1" />
-              <p></p>
-            </div>
             
             <div className="flex gap-4 items-start border-b border-rose-100 pb-5">
               <Waves className="w-6 h-6 text-accent shrink-0 mt-1" />
@@ -456,8 +452,8 @@ function InvitationCard({ onReset }: { onReset: () => void }) {
             </div>
 
             <div className="flex gap-4 items-start">
-              <MapPin className="w-6 h-6 text-accent shrink-0 mt-1" />
-              <p>Ghé một tiệm nhỏ ven đường dùng bữa tối nhẹ nhàng trước khi tạm biệt nhau.</p>
+              <Coffee className="w-6 h-6 text-accent shrink-0 mt-1" />
+              <p>Cùng nhau working date, nói chuyện, chia sẻ</p>
             </div>
             
             <motion.p 
