@@ -20,7 +20,7 @@ import {
   X
 } from 'lucide-react';
 
-const PASSWORD_HASH = "82dffebd16ac063bd01a8fd5af48408ad727e8faa1855f43567c38ad03d0a633";
+const PASSWORD_HASH = "c5a3cdcd5adc2413aa317679c1c4c3bd66bfe718188e1f59e9730b36979c5fd8";
 
 async function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
