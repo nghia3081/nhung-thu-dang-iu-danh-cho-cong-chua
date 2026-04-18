@@ -217,14 +217,6 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (audioRef?.current) {
-      audioRef?.current.addEventListener('ended', () => {
-        setCurrentMusic(getMusic());
-      });
-    }
-  }, [audioRef?.current]);
-
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden font-sans selection:bg-accent/20 bg-[#fffafb]">
       {/* Background with soft light gradients */}
@@ -261,6 +253,7 @@ export default function App() {
       <audio 
         ref={audioRef}
         src={currentMusic?.url} 
+        onended={() => setCurrentMusic(getMusic())}
         loop
         autoPlay
       />
