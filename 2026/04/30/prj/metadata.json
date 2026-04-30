@@ -1,0 +1,6 @@
+{
+  "name": "Amour - Bản Tình Ca",
+  "description": "Một không gian lãng mạn kể về câu chuyện tình yêu và lời hẹn đặc biệt.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
