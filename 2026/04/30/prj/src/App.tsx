@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue } from "motion/react";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useReducedMotion } from "motion/react";
 import { toCanvas } from "html-to-image";
 import {
   Heart,
@@ -184,7 +184,17 @@ const PetalOverlay = () => {
   );
 };
 
-const SecretNote = ({ children, x, y }: { children: string, x: string, y: string }) => {
+const SecretNote = ({
+  children,
+  x,
+  y,
+  isAnimated = true
+}: {
+  children: React.ReactNode;
+  x: string;
+  y: string;
+  isAnimated?: boolean;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const xValue = parseInt(x);
   const yValue = parseInt(y);
@@ -216,16 +226,16 @@ const SecretNote = ({ children, x, y }: { children: string, x: string, y: string
     <motion.div
       className={`absolute pointer-events-auto transition-all duration-300 ${isOpen ? 'z-[100]' : 'z-20'}`}
       style={{ left: x, top: y }}
-      animate={{
+      animate={isAnimated ? {
         y: [0, -10, 0],
         x: [0, 6, 0],
-      }}
-      transition={{
+      } : undefined}
+      transition={isAnimated ? {
         duration: randomDuration,
         repeat: Infinity,
         delay: randomDelay,
         ease: "easeInOut"
-      }}
+      } : undefined}
     >
       <motion.button
         whileHover={{ scale: 1.2, rotate: 15 }}
@@ -361,6 +371,7 @@ const SecretCard = ({
 };
 
 const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
+  const shouldReduceMotion = useReducedMotion();
   const notes = useMemo(
     () => [
       "Mọi khoảnh khắc bên em đều là báu vật vô giá mà anh luôn trân trọng.",
@@ -407,6 +418,12 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
 
   const centerCards = cards.filter(c => c.pos === 'center');
   const isFinished = centerCards.length === 0;
+  const renderedCards = useMemo(() => {
+    const nonCenterCards = cards.filter((c) => c.pos !== "center");
+    const centerLimit = shouldReduceMotion ? 2 : 4;
+    const limitedCenterCards = cards.filter((c) => c.pos === "center").slice(0, centerLimit);
+    return [...nonCenterCards, ...limitedCenterCards];
+  }, [cards, shouldReduceMotion]);
 
   return (
     <div className="relative w-full aspect-[4/5] max-w-sm mx-auto flex items-center justify-center">
@@ -446,17 +463,20 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
       </AnimatePresence>
 
       <div className="relative w-full h-full">
-        {cards.map((card, i) => (
+        {renderedCards.map((card) => {
+          const cardIndex = cards.findIndex((c) => c.id === card.id);
+          return (
           <SecretCard
             key={card.id}
-            index={i}
+            index={cardIndex}
             total={cards.length}
             frontImage={card.front}
             backImage={card.back}
             position={card.pos}
             onSwipe={(dir) => handleSwipe(card.id, dir)}
           />
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -548,9 +568,6 @@ const RomanticCamera = ({ autoStart = false }: { autoStart?: boolean }) => {
   };
 
   const startCamera = useCallback(async (deviceId?: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7280/ingest/dfb42d9d-e987-4a5b-bc67-00e1ebc796ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'961946'},body:JSON.stringify({sessionId:'961946',runId:'pre-change',hypothesisId:'C3',location:'src/App.tsx:RomanticCamera.startCamera',message:'startCamera invoked',data:{deviceId,isInitializing,isActive,shouldRunCameraRef:shouldRunCameraRef.current,currentDeviceId:streamRef.current?.getVideoTracks?.()[0]?.getSettings?.().deviceId ?? null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!shouldRunCameraRef.current || isInitializing) return;
     const currentDeviceId = streamRef.current?.getVideoTracks()[0]?.getSettings().deviceId;
     if (streamRef.current && isActive && (!deviceId || deviceId === currentDeviceId)) {
@@ -598,6 +615,14 @@ const RomanticCamera = ({ autoStart = false }: { autoStart?: boolean }) => {
   }, [shouldRunCamera]);
 
   useEffect(() => {
+    if (!stream || !videoRef.current) return;
+    if (videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
+    }
+    videoRef.current.play().catch(() => {});
+  }, [stream]);
+
+  useEffect(() => {
     const captureArea = captureAreaRef.current;
     if (!captureArea || typeof IntersectionObserver === "undefined") {
       setIsCameraInView(true);
@@ -605,9 +630,6 @@ const RomanticCamera = ({ autoStart = false }: { autoStart?: boolean }) => {
     }
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7280/ingest/dfb42d9d-e987-4a5b-bc67-00e1ebc796ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'961946'},body:JSON.stringify({sessionId:'961946',runId:'pre-change',hypothesisId:'C1',location:'src/App.tsx:RomanticCamera.IntersectionObserver',message:'Camera section visibility changed',data:{isIntersecting:entry.isIntersecting,intersectionRatio:Number(entry.intersectionRatio.toFixed(3))},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setIsCameraInView(entry.isIntersecting && entry.intersectionRatio >= 0.15);
       },
       { threshold: [0, 0.1, 0.15, 0.25, 0.5, 0.75] }
@@ -625,9 +647,6 @@ const RomanticCamera = ({ autoStart = false }: { autoStart?: boolean }) => {
   }, []);
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7280/ingest/dfb42d9d-e987-4a5b-bc67-00e1ebc796ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'961946'},body:JSON.stringify({sessionId:'961946',runId:'post-change',hypothesisId:'C2',location:'src/App.tsx:RomanticCamera.useEffect[shouldRunCamera]',message:'Camera run condition evaluated',data:{shouldRunCamera,isCameraRequested,isCameraInView,isPageVisible,selectedDeviceId,hasStream:Boolean(streamRef.current),isActive},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (shouldRunCamera) {
       startCamera(selectedDeviceId || undefined);
     } else {
@@ -649,9 +668,6 @@ const RomanticCamera = ({ autoStart = false }: { autoStart?: boolean }) => {
 
   const handleStartCamera = () => {
     setIsCameraRequested(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7280/ingest/dfb42d9d-e987-4a5b-bc67-00e1ebc796ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'961946'},body:JSON.stringify({sessionId:'961946',runId:'post-change',hypothesisId:'C4',location:'src/App.tsx:RomanticCamera.handleStartCamera',message:'User requested camera start',data:{isCameraRequestedBefore:isCameraRequested,isPageVisible,isCameraInView},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   };
 
   useEffect(() => {
@@ -1474,6 +1490,7 @@ const SectionHeading = ({ children, subtitle, align = "center" }: { children: Re
 // --- Main App ---
 
 export default function App() {
+  const shouldReduceMotion = useReducedMotion();
   const [hasStarted, setHasStarted] = useState(false);
   const [isRomanticCameraVisible, setIsRomanticCameraVisible] = useState(false);
   const [isMilestoneAnimating, setIsMilestoneAnimating] = useState(true);
@@ -1481,10 +1498,16 @@ export default function App() {
   const [isMilestoneRewinding, setIsMilestoneRewinding] = useState(false);
   const [milestoneEdgePadding, setMilestoneEdgePadding] = useState(0);
   const milestoneScrollerRef = useRef<HTMLDivElement>(null);
+  const memorySectionRef = useRef<HTMLElement>(null);
+  const gallerySectionRef = useRef<HTMLElement>(null);
+  const milestoneSectionRef = useRef<HTMLElement>(null);
   const isMilestoneDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartScrollLeftRef = useRef(0);
   const milestoneRewindFrameRef = useRef<number | null>(null);
+  const [isMemorySectionInView, setIsMemorySectionInView] = useState(true);
+  const [isGallerySectionInView, setIsGallerySectionInView] = useState(true);
+  const [isMilestoneSectionInView, setIsMilestoneSectionInView] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
@@ -1583,28 +1606,54 @@ export default function App() {
   }, [milestoneEdgePadding]);
 
   useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const isVisible = entry.isIntersecting && entry.intersectionRatio > 0.08;
+          if (entry.target === memorySectionRef.current) {
+            setIsMemorySectionInView(isVisible);
+          } else if (entry.target === gallerySectionRef.current) {
+            setIsGallerySectionInView(isVisible);
+          } else if (entry.target === milestoneSectionRef.current) {
+            setIsMilestoneSectionInView(isVisible);
+          }
+        });
+      },
+      { threshold: [0, 0.08, 0.2, 0.5] }
+    );
+
+    if (memorySectionRef.current) observer.observe(memorySectionRef.current);
+    if (gallerySectionRef.current) observer.observe(gallerySectionRef.current);
+    if (milestoneSectionRef.current) observer.observe(milestoneSectionRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!isMilestoneAnimating) return;
 
     let frameId = 0;
     let lastTick = performance.now();
     const runDurationMs = 140000;
+    const scroller = milestoneScrollerRef.current;
+    if (!scroller) return;
+    const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
+    const startScrollLeft = getMilestoneStartScrollLeft(scroller);
+    const endScrollLeft = getMilestoneEndScrollLeft(scroller);
+
+    if (maxScrollLeft <= 0 || endScrollLeft <= startScrollLeft) {
+      setIsMilestoneAnimating(false);
+      return;
+    }
+
+    const runDistance = endScrollLeft - startScrollLeft;
+    const speedPxPerMs = runDistance / runDurationMs;
 
     const tick = (now: number) => {
-      const scroller = milestoneScrollerRef.current;
-      if (!scroller) return;
-
-      const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
-      const startScrollLeft = getMilestoneStartScrollLeft(scroller);
-      const endScrollLeft = getMilestoneEndScrollLeft(scroller);
-      if (maxScrollLeft <= 0 || endScrollLeft <= startScrollLeft) {
-        setIsMilestoneAnimating(false);
-        return;
-      }
-
       if (!isMilestonePaused) {
         const elapsed = now - lastTick;
-        const runDistance = endScrollLeft - startScrollLeft;
-        const speedPxPerMs = runDistance / runDurationMs;
         const normalizedScrollLeft = Math.max(scroller.scrollLeft, startScrollLeft);
         const nextScroll = Math.min(normalizedScrollLeft + elapsed * speedPxPerMs, endScrollLeft);
         scroller.scrollLeft = nextScroll;
@@ -1827,19 +1876,19 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6 space-y-48 pb-64">
 
         {/* Memory Box - Interactive */}
-        <section className="relative min-h-[85vh] flex items-center justify-center">
+        <section ref={memorySectionRef} className="relative min-h-[85vh] flex items-center justify-center">
           <SectionHeading subtitle="vùng ký ức">Nơi Cảm Xúc Bắt Đầu</SectionHeading>
 
-          <SecretNote x="8%" y="12%">Sự dịu dàng chính là thứ cốt lõi khiến anh mê mẩn về em</SecretNote>
-          <SecretNote x="88%" y="15%">Cảm ơn vì đã luôn là ánh nắng của riêng anh.</SecretNote>
-          <SecretNote x="12%" y="85%">Mỗi ngày bên em là một trang nhật ký đẹp nhất.</SecretNote>
-          <SecretNote x="85%" y="82%">Anh chưa bao giờ hối hận vì ngày ấy đã nói lời chào.</SecretNote>
-          <SecretNote x="50%" y="5%">Chúng ta cứ yêu nhau bình yên thôi</SecretNote>
-          <SecretNote x="48%" y="92%">Cứ ôm anh thật chặt nhé</SecretNote>
-          <SecretNote x="18%" y="48%">Em là điều tuyệt vời nhất mà anh từng có.</SecretNote>
-          <SecretNote x="78%" y="52%">Anh yêu em, thương em rất nhiều</SecretNote>
-          <SecretNote x="35%" y="28%">Nhớ những cái nắm tay thật chặt khi ta bên nhau.</SecretNote>
-          <SecretNote x="62%" y="35%">Nụ cười, vẻ đẹp, sự quyến rũ và mùi hương của em làm anh tan chảy.</SecretNote>
+          <SecretNote x="8%" y="12%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Sự dịu dàng chính là thứ cốt lõi khiến anh mê mẩn về em</SecretNote>
+          <SecretNote x="88%" y="15%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Cảm ơn vì đã luôn là ánh nắng của riêng anh.</SecretNote>
+          <SecretNote x="12%" y="85%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Mỗi ngày bên em là một trang nhật ký đẹp nhất.</SecretNote>
+          <SecretNote x="85%" y="82%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Anh chưa bao giờ hối hận vì ngày ấy đã nói lời chào.</SecretNote>
+          <SecretNote x="50%" y="5%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Chúng ta cứ yêu nhau bình yên thôi</SecretNote>
+          <SecretNote x="48%" y="92%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Cứ ôm anh thật chặt nhé</SecretNote>
+          <SecretNote x="18%" y="48%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Em là điều tuyệt vời nhất mà anh từng có.</SecretNote>
+          <SecretNote x="78%" y="52%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Anh yêu em, thương em rất nhiều</SecretNote>
+          <SecretNote x="35%" y="28%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Nhớ những cái nắm tay thật chặt khi ta bên nhau.</SecretNote>
+          <SecretNote x="62%" y="35%" isAnimated={!shouldReduceMotion && isMemorySectionInView}>Nụ cười, vẻ đẹp, sự quyến rũ và mùi hương của em làm anh tan chảy.</SecretNote>
 
           <div className="absolute inset-0 mask-radial-fade opacity-30 pointer-events-none">
             <div className="w-full h-full border-[1px] border-zinc-100 rounded-[100px] rotate-12" />
@@ -1848,7 +1897,7 @@ export default function App() {
         </section>
 
         {/* Immersive Gallery Section */}
-        <section className="space-y-32">
+        <section ref={gallerySectionRef} className="space-y-32">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-24 items-center">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -1867,13 +1916,13 @@ export default function App() {
             </motion.div>
 
             <div className="relative group">
-              <SecretStack imagePool={ALL_IMAGE_URLS} />
+              <SecretStack imagePool={isGallerySectionInView ? ALL_IMAGE_URLS : ALL_IMAGE_URLS.slice(0, 4)} />
             </div>
           </div>
         </section>
 
         {/* Horizontal Scroll Memory Lane (Infinite Carousel) */}
-        <section className="py-20 relative overflow-hidden">
+        <section ref={milestoneSectionRef} className="py-20 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-pink-50/20 skew-y-3 -z-10" />
           <SectionHeading subtitle="những cột mốc" align="center">Chặng Đường Hạnh Phúc</SectionHeading>
 
@@ -1893,6 +1942,7 @@ export default function App() {
               onTouchMove={(e) => moveMilestoneDrag(e.touches[0].clientX)}
               onTouchEnd={endMilestoneDrag}
               className="overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none"
+              style={{ scrollBehavior: isMilestoneSectionInView ? "auto" : "smooth" }}
             >
               <div className="flex gap-8 py-4">
                 <div
