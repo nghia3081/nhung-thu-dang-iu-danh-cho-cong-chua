@@ -1863,8 +1863,7 @@ export default function App() {
                     { stage: "finally", t: "Cuối cùng thì", d: "Anh đã lấy hết can đảm, và anh đã có thể nắm tay người con gái mà anh thầm yêu, thầm nhớ" },
                     { stage: "lastMilestone", t: "Anh yêu em", d: "Anh sẽ ở đây, ở bên em, nắm tay em thật chặt, ôm em thật lâu. Mong em cũng sẽ ôm anh thật chặt. Mong mình sẽ yêu nhau thật lâu. Anh yêu em." }
                   ];
-                  const milestones = isLowPerfMode ? allMilestones.filter((_, idx) => idx % 2 === 0) : allMilestones;
-                  return milestones
+                  return allMilestones
                     .map((milestone) => {
                       const stageImages = timelineImageGroups[milestone.stage as keyof typeof timelineImageGroups];
                       const currentIndex = usageByStage[milestone.stage] ?? 0;
