@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useReducedMotion } from "motion/react";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useReducedMotion } from "motion/react";
 import { toCanvas } from "html-to-image";
 import {
   Heart,
@@ -27,7 +27,6 @@ import {
   X,
   ArrowLeft,
   ArrowRight,
-  RefreshCw
 } from "lucide-react";
 
 // --- Types ---
@@ -296,7 +295,6 @@ const SecretCard = ({
   key?: React.Key;
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const x = useMotionValue(0);
   const backFaceRef = useRef<HTMLDivElement>(null);
 
   const handleCardToggle = () => {
@@ -313,24 +311,8 @@ const SecretCard = ({
   const targetScale = position === 'center' ? 1 : 0.8;
   const targetZ = position === 'center' ? 50 - index : index;
 
-  const handleDragEnd = (_: any, info: any) => {
-    const threshold = 100;
-    if (position === 'center') {
-      if (info.offset.x > threshold) onSwipe(1); // To right
-      else if (info.offset.x < -threshold) onSwipe(-1); // To left
-    } else {
-      // Swiping back to center
-      if (position === 'left' && info.offset.x > threshold) onSwipe(0);
-      else if (position === 'right' && info.offset.x < -threshold) onSwipe(0);
-    }
-  };
-
   return (
     <motion.div
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={isLowPerfMode ? 0.22 : 0.6}
-      onDragEnd={handleDragEnd}
       animate={{
         x: targetX,
         rotate: targetRotate,
@@ -343,8 +325,8 @@ const SecretCard = ({
         damping: isLowPerfMode ? 36 : 30,
         zIndex: { delay: position === 'center' ? 0 : 0.1 }
       }}
-      className={`absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing transition-shadow duration-500`}
-      style={{ perspective: "2000px", x }}
+      className={`absolute inset-0 w-full h-full transition-shadow duration-500`}
+      style={{ perspective: "2000px" }}
     >
       <motion.div
         animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -384,6 +366,30 @@ const SecretCard = ({
           <div className="absolute inset-0 z-10 bg-black/15" />
         </div>
       </motion.div>
+      {position === "center" && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwipe(-1);
+            }}
+            className="w-9 h-9 rounded-full bg-white/80 text-zinc-700 border border-zinc-200 text-xs font-bold"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwipe(1);
+            }}
+            className="w-9 h-9 rounded-full bg-white/80 text-zinc-700 border border-zinc-200 text-xs font-bold"
+          >
+            →
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -440,11 +446,11 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
   const isFinished = centerCards.length === 0;
   const maxRenderedCards = isLowPerfMode ? 6 : 8;
   const renderedCards = useMemo(() => {
+    const allCenterCards = cards.filter((c) => c.pos === "center");
     const nonCenterCards = cards.filter((c) => c.pos !== "center");
-    const centerLimit = isLowPerfMode ? 2 : 4;
-    const limitedCenterCards = cards.filter((c) => c.pos === "center").slice(0, centerLimit);
-    return [...nonCenterCards, ...limitedCenterCards].slice(0, maxRenderedCards);
-  }, [cards, isLowPerfMode, maxRenderedCards]);
+    const nonCenterLimit = Math.max(maxRenderedCards - allCenterCards.length, 0);
+    return [...nonCenterCards.slice(0, nonCenterLimit), ...allCenterCards];
+  }, [cards, maxRenderedCards]);
 
   return (
     <div className="relative w-full aspect-[4/5] max-w-sm mx-auto flex items-center justify-center">
@@ -1518,18 +1524,11 @@ export default function App() {
   );
   const [hasStarted, setHasStarted] = useState(false);
   const [isRomanticCameraVisible, setIsRomanticCameraVisible] = useState(false);
-  const [isMilestoneAnimating, setIsMilestoneAnimating] = useState(true);
-  const [isMilestonePaused, setIsMilestonePaused] = useState(false);
-  const [isMilestoneRewinding, setIsMilestoneRewinding] = useState(false);
   const [milestoneEdgePadding, setMilestoneEdgePadding] = useState(0);
   const milestoneScrollerRef = useRef<HTMLDivElement>(null);
   const memorySectionRef = useRef<HTMLElement>(null);
   const gallerySectionRef = useRef<HTMLElement>(null);
   const milestoneSectionRef = useRef<HTMLElement>(null);
-  const isMilestoneDraggingRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragStartScrollLeftRef = useRef(0);
-  const milestoneRewindFrameRef = useRef<number | null>(null);
   const [isMemorySectionInView, setIsMemorySectionInView] = useState(true);
   const [isGallerySectionInView, setIsGallerySectionInView] = useState(true);
   const [isMilestoneSectionInView, setIsMilestoneSectionInView] = useState(true);
@@ -1555,56 +1554,6 @@ export default function App() {
 
   const startJourney = () => {
     setHasStarted(true);
-  };
-
-  const replayMilestones = () => {
-    const scroller = milestoneScrollerRef.current;
-    if (!scroller || isMilestoneRewinding) return;
-
-    if (milestoneRewindFrameRef.current !== null) {
-      cancelAnimationFrame(milestoneRewindFrameRef.current);
-    }
-
-    setIsMilestoneAnimating(false);
-    setIsMilestonePaused(true);
-    setIsMilestoneRewinding(true);
-
-    const from = scroller.scrollLeft;
-    const to = getMilestoneStartScrollLeft(scroller);
-    const rewindDurationMs = 550;
-    const startAt = performance.now();
-
-    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-
-    const rewind = (now: number) => {
-      const elapsed = now - startAt;
-      const progress = Math.min(elapsed / rewindDurationMs, 1);
-      const eased = easeOutCubic(progress);
-      scroller.scrollLeft = from + (to - from) * eased;
-
-      if (progress < 1) {
-        milestoneRewindFrameRef.current = requestAnimationFrame(rewind);
-        return;
-      }
-
-      scroller.scrollLeft = to;
-      milestoneRewindFrameRef.current = null;
-      setIsMilestoneRewinding(false);
-      setIsMilestonePaused(false);
-      setIsMilestoneAnimating(true);
-    };
-
-    milestoneRewindFrameRef.current = requestAnimationFrame(rewind);
-  };
-
-  const getMilestoneEndScrollLeft = (scroller: HTMLDivElement) => {
-    const maxScrollLeft = Math.max(scroller.scrollWidth - scroller.clientWidth, 0);
-    const items = scroller.querySelectorAll<HTMLElement>("[data-milestone-item='true']");
-    const lastItem = items[items.length - 1];
-    if (!lastItem) return maxScrollLeft;
-
-    const target = lastItem.offsetLeft + lastItem.offsetWidth / 2 - scroller.clientWidth / 2;
-    return Math.max(0, Math.min(target, maxScrollLeft));
   };
 
   const getMilestoneStartScrollLeft = (scroller: HTMLDivElement) => {
@@ -1677,82 +1626,6 @@ export default function App() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!isMilestoneAnimating) return;
-
-    let frameId = 0;
-    let lastTick = performance.now();
-    const runDurationMs = 140000;
-    const scroller = milestoneScrollerRef.current;
-    if (!scroller) return;
-    const maxScrollLeft = scroller.scrollWidth - scroller.clientWidth;
-    const startScrollLeft = getMilestoneStartScrollLeft(scroller);
-    const endScrollLeft = getMilestoneEndScrollLeft(scroller);
-
-    if (maxScrollLeft <= 0 || endScrollLeft <= startScrollLeft) {
-      setIsMilestoneAnimating(false);
-      return;
-    }
-
-    const runDistance = endScrollLeft - startScrollLeft;
-    const speedPxPerMs = runDistance / runDurationMs;
-
-    const tick = (now: number) => {
-      if (!isMilestonePaused) {
-        const elapsed = now - lastTick;
-        const normalizedScrollLeft = Math.max(scroller.scrollLeft, startScrollLeft);
-        const nextScroll = Math.min(normalizedScrollLeft + elapsed * speedPxPerMs, endScrollLeft);
-        scroller.scrollLeft = nextScroll;
-        if (nextScroll >= endScrollLeft - 1) {
-          scroller.scrollLeft = endScrollLeft;
-          setIsMilestoneAnimating(false);
-          return;
-        }
-      }
-
-      lastTick = now;
-      frameId = requestAnimationFrame(tick);
-    };
-
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [isMilestoneAnimating, isMilestonePaused]);
-
-  useEffect(() => {
-    return () => {
-      if (milestoneRewindFrameRef.current !== null) {
-        cancelAnimationFrame(milestoneRewindFrameRef.current);
-      }
-    };
-  }, []);
-
-  const startMilestoneDrag = (clientX: number) => {
-    const scroller = milestoneScrollerRef.current;
-    if (!scroller) return;
-    isMilestoneDraggingRef.current = true;
-    dragStartXRef.current = clientX;
-    dragStartScrollLeftRef.current = scroller.scrollLeft;
-    setIsMilestonePaused(true);
-  };
-
-  const moveMilestoneDrag = (clientX: number) => {
-    const scroller = milestoneScrollerRef.current;
-    if (!scroller || !isMilestoneDraggingRef.current) return;
-    const deltaX = clientX - dragStartXRef.current;
-    const startScrollLeft = getMilestoneStartScrollLeft(scroller);
-    const endScrollLeft = getMilestoneEndScrollLeft(scroller);
-    const nextScrollLeft = dragStartScrollLeftRef.current - deltaX;
-    scroller.scrollLeft = Math.max(startScrollLeft, Math.min(nextScrollLeft, endScrollLeft));
-    if (scroller.scrollLeft >= endScrollLeft - 1) {
-      scroller.scrollLeft = endScrollLeft;
-      setIsMilestoneAnimating(false);
-    }
-  };
-
-  const endMilestoneDrag = () => {
-    isMilestoneDraggingRef.current = false;
-    setIsMilestonePaused(false);
-  };
 
   return (
     <div className="relative min-h-screen overflow-x-hidden selection:bg-pink-100 selection:text-pink-900 bg-[#fffdfc] cursor-default">
@@ -1952,21 +1825,9 @@ export default function App() {
           <SectionHeading subtitle="những cột mốc" align="center">Chặng Đường Hạnh Phúc</SectionHeading>
 
           <div className="flex relative items-center">
-            {/* Left Fade */}
-            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#fffdfc] to-transparent z-20 pointer-events-none" />
-            {/* Right Fade */}
-            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#fffdfc] to-transparent z-20 pointer-events-none" />
-
             <div
               ref={milestoneScrollerRef}
-              onMouseDown={(e) => startMilestoneDrag(e.clientX)}
-              onMouseMove={(e) => moveMilestoneDrag(e.clientX)}
-              onMouseUp={endMilestoneDrag}
-              onMouseLeave={endMilestoneDrag}
-              onTouchStart={(e) => startMilestoneDrag(e.touches[0].clientX)}
-              onTouchMove={(e) => moveMilestoneDrag(e.touches[0].clientX)}
-              onTouchEnd={endMilestoneDrag}
-              className="overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none"
+              className="overflow-x-auto no-scrollbar select-none"
               style={{ scrollBehavior: isMilestoneSectionInView ? "auto" : "smooth" }}
             >
               <div className="flex gap-8 py-4">
@@ -2048,18 +1909,6 @@ export default function App() {
               </div>
             </div>
           </div>
-          {!isMilestoneAnimating && !isMilestoneRewinding && (
-            <div className="mt-10 text-center">
-              <button
-                onClick={replayMilestones}
-                aria-label="Chạy lại"
-                title="Chạy lại"
-                className="w-12 h-12 rounded-full border border-pink-200 text-pink-500 inline-flex items-center justify-center hover:bg-pink-50 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
-          )}
         </section>
 
         {/* THE FINAL INVITATION - More Dramatic */}
