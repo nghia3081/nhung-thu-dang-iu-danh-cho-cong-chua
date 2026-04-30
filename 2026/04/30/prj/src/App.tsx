@@ -313,9 +313,9 @@ const SecretCard = ({
 
   return (
     <motion.div
-      drag={isLowPerfMode ? false : "x"}
-      dragConstraints={isLowPerfMode ? undefined : { left: 0, right: 0 }}
-      dragElastic={isLowPerfMode ? 0 : 0.6}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={isLowPerfMode ? 0.22 : 0.6}
       onDragEnd={handleDragEnd}
       animate={{
         x: targetX,
