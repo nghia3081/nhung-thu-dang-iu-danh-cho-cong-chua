@@ -269,7 +269,8 @@ const SecretCard = ({
   position,
   index,
   total,
-  onSwipe
+  onSwipe,
+  isLowPerfMode = false
 }: {
   frontImage: string;
   backImage: string;
@@ -277,6 +278,7 @@ const SecretCard = ({
   index: number;
   total: number;
   onSwipe: (direction: number) => void;
+  isLowPerfMode?: boolean;
   key?: React.Key;
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -311,9 +313,9 @@ const SecretCard = ({
 
   return (
     <motion.div
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.6}
+      drag={isLowPerfMode ? false : "x"}
+      dragConstraints={isLowPerfMode ? undefined : { left: 0, right: 0 }}
+      dragElastic={isLowPerfMode ? 0 : 0.6}
       onDragEnd={handleDragEnd}
       animate={{
         x: targetX,
@@ -323,8 +325,8 @@ const SecretCard = ({
       }}
       transition={{
         type: "spring",
-        stiffness: 260,
-        damping: 30,
+        stiffness: isLowPerfMode ? 180 : 260,
+        damping: isLowPerfMode ? 36 : 30,
         zIndex: { delay: position === 'center' ? 0 : 0.1 }
       }}
       className={`absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing transition-shadow duration-500`}
@@ -372,6 +374,8 @@ const SecretCard = ({
 
 const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
   const shouldReduceMotion = useReducedMotion();
+  const isMobileViewport = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  const isLowPerfMode = shouldReduceMotion || isMobileViewport;
   const notes = useMemo(
     () => [
       "Mọi khoảnh khắc bên em đều là báu vật vô giá mà anh luôn trân trọng.",
@@ -420,10 +424,10 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
   const isFinished = centerCards.length === 0;
   const renderedCards = useMemo(() => {
     const nonCenterCards = cards.filter((c) => c.pos !== "center");
-    const centerLimit = shouldReduceMotion ? 2 : 4;
+    const centerLimit = isLowPerfMode ? 2 : 4;
     const limitedCenterCards = cards.filter((c) => c.pos === "center").slice(0, centerLimit);
     return [...nonCenterCards, ...limitedCenterCards];
-  }, [cards, shouldReduceMotion]);
+  }, [cards, isLowPerfMode]);
 
   return (
     <div className="relative w-full aspect-[4/5] max-w-sm mx-auto flex items-center justify-center">
@@ -474,6 +478,7 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
             backImage={card.back}
             position={card.pos}
             onSwipe={(dir) => handleSwipe(card.id, dir)}
+            isLowPerfMode={isLowPerfMode}
           />
           );
         })}
@@ -1491,6 +1496,9 @@ const SectionHeading = ({ children, subtitle, align = "center" }: { children: Re
 
 export default function App() {
   const shouldReduceMotion = useReducedMotion();
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   const [hasStarted, setHasStarted] = useState(false);
   const [isRomanticCameraVisible, setIsRomanticCameraVisible] = useState(false);
   const [isMilestoneAnimating, setIsMilestoneAnimating] = useState(true);
@@ -1515,6 +1523,7 @@ export default function App() {
 
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
+  const isLowPerfMode = shouldReduceMotion || isMobileViewport;
 
   const startJourney = () => {
     setHasStarted(true);
@@ -1579,6 +1588,15 @@ export default function App() {
     const target = firstItem.offsetLeft + firstItem.offsetWidth / 2 - scroller.clientWidth / 2;
     return Math.max(0, Math.min(target, maxScrollLeft));
   };
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   useEffect(() => {
     const scroller = milestoneScrollerRef.current;
@@ -1759,32 +1777,14 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <PetalOverlay />
-      <MouseParticles />
+      {!isLowPerfMode && <PetalOverlay />}
+      {!isLowPerfMode && <MouseParticles />}
 
       {/* Progress Line */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-100 via-pink-300 to-pink-100 origin-left z-50"
         style={{ scaleX: scaleProgress }}
       />
-
-      {/* Navigation UI */}
-      <nav className="fixed top-0 left-0 right-0 z-50 p-8 flex justify-between items-center pointer-events-none">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3 pointer-events-auto group cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-full glass flex items-center justify-center group-hover:bg-white transition-all shadow-sm">
-            <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-sans font-black tracking-[0.4em] text-pink-300 uppercase leading-none">Amour</span>
-            <span className="text-xs font-serif italic text-zinc-400">Our Story</span>
-          </div>
-        </motion.div>
-
-      </nav>
 
       {/* HERO SECTION - Enhanced with Parallax Elements */}
       <header className="relative h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
@@ -1952,7 +1952,7 @@ export default function App() {
                 />
                 {(() => {
                   const usageByStage: Record<string, number> = {};
-                  return [
+                  const allMilestones = [
                     { stage: "firstMeet", t: "Trên chuyến đi lần đầu tiên gặp nhau", d: "Khi có thể nói rằng định mệnh đã sắp đặt" },
                     { stage: "firstDate", t: "Buổi hẹn hò đầu tiên", d: "Khi anh còn ngây ngô, vụng về nhất" },
                     { stage: "firstDate", t: "Buổi hẹn hò đầu tiên", d: "Khi anh còn ngây ngô, vụng về nhất" },
@@ -1976,7 +1976,9 @@ export default function App() {
                     { stage: "finally", t: "Cuối cùng thì", d: "Anh đã lấy hết can đảm, và anh đã có thể nắm tay người con gái mà anh thầm yêu, thầm nhớ" },
                     { stage: "finally", t: "Cuối cùng thì", d: "Anh đã lấy hết can đảm, và anh đã có thể nắm tay người con gái mà anh thầm yêu, thầm nhớ" },
                     { stage: "lastMilestone", t: "Anh yêu em", d: "Anh sẽ ở đây, ở bên em, nắm tay em thật chặt, ôm em thật lâu. Mong em cũng sẽ ôm anh thật chặt. Mong mình sẽ yêu nhau thật lâu. Anh yêu em." }
-                  ]
+                  ];
+                  const milestones = isLowPerfMode ? allMilestones.filter((_, idx) => idx % 2 === 0) : allMilestones;
+                  return milestones
                     .map((milestone) => {
                       const stageImages = TIMELINE_IMAGE_GROUPS[milestone.stage as keyof typeof TIMELINE_IMAGE_GROUPS];
                       const currentIndex = usageByStage[milestone.stage] ?? 0;
@@ -1994,7 +1996,12 @@ export default function App() {
                         className="flex-shrink-0 w-80 min-h-[500px] glass rounded-[3rem] p-5 group border-white/50 shadow-sm hover:shadow-2xl transition-all duration-500 bg-white/40 flex flex-col"
                       >
                         <div className="w-full h-72 rounded-[2.5rem] overflow-hidden mb-8 relative">
-                          <img src={m.img} className="w-full h-full object-cover brightness-95 group-hover:brightness-110 transition-all duration-700" />
+                          <img
+                            src={m.img}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover brightness-95 group-hover:brightness-110 transition-all duration-700"
+                          />
                           <div className="absolute inset-0 bg-pink-500/0 group-hover:bg-pink-500/10 transition-colors" />
                         </div>
                         <div className="space-y-4 px-2 flex-1">
