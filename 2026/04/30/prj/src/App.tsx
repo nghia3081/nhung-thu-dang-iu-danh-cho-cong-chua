@@ -45,53 +45,61 @@ const PHOTO_FRAMES = [
 
 const FRAME_TEMPLATE_VERSION = "v3-instagram-no-caption";
 const CAPTURE_MIN_LONG_EDGE = 4096;
-const ALL_IMAGE_URLS = Object.values(
-  import.meta.glob("./assets/images/*", {
-    eager: true,
-    import: "default"
-  })
-) as string[];
+const DESKTOP_IMAGE_MAP = import.meta.glob("./assets/images/*", {
+  eager: true,
+  import: "default"
+}) as Record<string, string>;
 
-const TIMELINE_IMAGE_GROUPS = {
-  firstMeet: [new URL("./assets/images/moc 1.jpeg", import.meta.url).href],
+const getImageUrlByName = (fileName: string) => {
+  const desktopKey = `./assets/images/${fileName}`;
+  const desktopSrc = DESKTOP_IMAGE_MAP[desktopKey];
+  return desktopSrc;
+};
+
+const getAllImageUrls = () => {
+  return Object.values(DESKTOP_IMAGE_MAP);
+};
+
+const TIMELINE_IMAGE_FILE_GROUPS = {
+  firstMeet: ["moc 1.jpeg"],
   firstDate: [
-    new URL("./assets/images/moc 2 1.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 2 2.jpeg", import.meta.url).href
+    "moc 2 1.jpeg",
+    "moc 2 2.jpeg"
   ],
   nextDates: [
-    new URL("./assets/images/moc 3 1.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 3 2.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 3 3.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 3 4.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 3 5.jpeg", import.meta.url).href
+    "moc 3 1.jpeg",
+    "moc 3 2.jpeg",
+    "moc 3 3.jpeg",
+    "moc 3 4.jpeg",
+    "moc 3 5.jpeg"
   ],
   gifts: [
-    new URL("./assets/images/moc 4 1.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 4 2.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 4 3.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 4 4.JPG", import.meta.url).href,
-    new URL("./assets/images/moc 4 5.JPG", import.meta.url).href,
-    new URL("./assets/images/moc 4 5.jpeg", import.meta.url).href
+    "moc 4 1.jpeg",
+    "moc 4 2.jpeg",
+    "moc 4 3.jpeg",
+    "moc 4 4.JPG",
+    "moc 4 5.JPG",
+    "moc 4 5.jpeg"
   ],
   trips: [
-    new URL("./assets/images/moc 5 1.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 5 2.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 5 3.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 5 4.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 5 5.jpeg", import.meta.url).href
+    "moc 5 1.jpeg",
+    "moc 5 2.jpeg",
+    "moc 5 3.jpeg",
+    "moc 5 4.jpeg",
+    "moc 5 5.jpeg"
   ],
   finally: [
-    new URL("./assets/images/moc 6 1.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 2.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 3.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 4.JPG", import.meta.url).href,
-    new URL("./assets/images/moc 6 5.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 6.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 7.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 8.jpeg", import.meta.url).href,
-    new URL("./assets/images/moc 6 9.jpeg", import.meta.url).href
+    "moc 6 1.jpeg",
+    "moc 6 2.jpeg",
+    "moc 6 3.jpeg",
+    "moc 6 4.JPG",
+    "moc 6 5.jpeg",
+    "moc 6 6.jpeg",
+    "moc 6 7.jpeg",
+    "moc 6 8.jpeg",
+    "moc 6 9.jpeg"
   ],
-  lastMilestone: [new URL("./assets/images/moc 7.jpeg", import.meta.url).href]
+  lastMilestone: ["moc 7.jpeg"]
 } as const;
 
 // --- Components ---
@@ -100,10 +108,16 @@ const MouseParticles = () => {
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   const lastTimestampRef = useRef<number>(0);
   const intraMsSequenceRef = useRef<number>(0);
+  const rafLockRef = useRef(false);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (Math.random() > 0.7) {
+      if (rafLockRef.current) return;
+      rafLockRef.current = true;
+      requestAnimationFrame(() => {
+        rafLockRef.current = false;
+      });
+      if (Math.random() > 0.85) {
         const now = Date.now();
         if (now === lastTimestampRef.current) {
           intraMsSequenceRef.current += 1;
@@ -112,10 +126,10 @@ const MouseParticles = () => {
           intraMsSequenceRef.current = 0;
         }
         const id = now * 1000 + intraMsSequenceRef.current;
-        setParticles((prev) => [...prev.slice(-25), { id, x: e.clientX, y: e.clientY }]);
+        setParticles((prev) => [...prev.slice(-12), { id, x: e.clientX, y: e.clientY }]);
         setTimeout(() => {
           setParticles((prev) => prev.filter((p) => p.id !== id));
-        }, 800);
+        }, 550);
       }
     };
     window.addEventListener("mousemove", handleMouseMove);
@@ -174,7 +188,7 @@ const Petal = ({ delay = 0, x = 0 }: { delay?: number; x?: number; key?: any }) 
 );
 
 const PetalOverlay = () => {
-  const petals = useMemo(() => Array.from({ length: 12 }), []);
+  const petals = useMemo(() => Array.from({ length: 7 }), []);
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-10">
       {petals.map((_, i) => (
@@ -346,6 +360,8 @@ const SecretCard = ({
         >
           <img
             src={frontImage}
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full object-cover transition-all duration-700 ${position !== 'center' ? 'grayscale opacity-50 blur-[2px]' : 'grayscale-0 opacity-100'}`}
             referrerPolicy="no-referrer"
           />
@@ -363,7 +379,7 @@ const SecretCard = ({
           className="absolute inset-0 w-full h-full rounded-[2.5rem] overflow-hidden bg-white"
           style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg) translateZ(1px)" }}
         >
-          <img src={backImage} className="absolute inset-0 w-full h-full object-cover opacity-80 blur-md scale-110" />
+          <img src={backImage} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover opacity-80 blur-md scale-110" />
           <div className="absolute inset-0 bg-black/35" />
           <div className="absolute inset-0 z-10 bg-black/15" />
         </div>
@@ -422,12 +438,13 @@ const SecretStack = ({ imagePool }: { imagePool: readonly string[] }) => {
 
   const centerCards = cards.filter(c => c.pos === 'center');
   const isFinished = centerCards.length === 0;
+  const maxRenderedCards = isLowPerfMode ? 6 : 8;
   const renderedCards = useMemo(() => {
     const nonCenterCards = cards.filter((c) => c.pos !== "center");
     const centerLimit = isLowPerfMode ? 2 : 4;
     const limitedCenterCards = cards.filter((c) => c.pos === "center").slice(0, centerLimit);
-    return [...nonCenterCards, ...limitedCenterCards];
-  }, [cards, isLowPerfMode]);
+    return [...nonCenterCards, ...limitedCenterCards].slice(0, maxRenderedCards);
+  }, [cards, isLowPerfMode, maxRenderedCards]);
 
   return (
     <div className="relative w-full aspect-[4/5] max-w-sm mx-auto flex items-center justify-center">
@@ -1524,6 +1541,17 @@ export default function App() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.15], [1, 0.95]);
   const isLowPerfMode = shouldReduceMotion || isMobileViewport;
+  const allImageUrls = useMemo(() => getAllImageUrls(), []);
+  const timelineImageGroups = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(TIMELINE_IMAGE_FILE_GROUPS).map(([stage, fileNames]) => [
+          stage,
+          fileNames.map((fileName) => getImageUrlByName(fileName)).filter(Boolean)
+        ])
+      ) as Record<keyof typeof TIMELINE_IMAGE_FILE_GROUPS, string[]>,
+    []
+  );
 
   const startJourney = () => {
     setHasStarted(true);
@@ -1777,9 +1805,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {!isLowPerfMode && <PetalOverlay />}
-      {!isLowPerfMode && <MouseParticles />}
-
       {/* Progress Line */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-100 via-pink-300 to-pink-100 origin-left z-50"
@@ -1916,7 +1941,7 @@ export default function App() {
             </motion.div>
 
             <div className="relative group">
-              <SecretStack imagePool={isGallerySectionInView ? ALL_IMAGE_URLS : ALL_IMAGE_URLS.slice(0, 4)} />
+              <SecretStack imagePool={isGallerySectionInView ? allImageUrls : allImageUrls.slice(0, 4)} />
             </div>
           </div>
         </section>
@@ -1980,7 +2005,7 @@ export default function App() {
                   const milestones = isLowPerfMode ? allMilestones.filter((_, idx) => idx % 2 === 0) : allMilestones;
                   return milestones
                     .map((milestone) => {
-                      const stageImages = TIMELINE_IMAGE_GROUPS[milestone.stage as keyof typeof TIMELINE_IMAGE_GROUPS];
+                      const stageImages = timelineImageGroups[milestone.stage as keyof typeof timelineImageGroups];
                       const currentIndex = usageByStage[milestone.stage] ?? 0;
                       usageByStage[milestone.stage] = currentIndex + 1;
                       return {
