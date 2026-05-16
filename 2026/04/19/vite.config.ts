@@ -8,6 +8,11 @@ export default defineConfig(({mode}) => {
   const siteUrl = (env.APP_URL || env.VITE_PUBLIC_SITE_URL || '')
     .trim()
     .replace(/\/+$/, '');
+  const basePath =
+    env.VITE_BASE_PATH?.trim() ||
+    (siteUrl ? new URL(siteUrl).pathname : '/');
+  const normalizedBase =
+    basePath === '/' ? '/' : `/${basePath.replace(/^\/+|\/+$/g, '')}/`;
 
   const seoExtraLinks = siteUrl
     ? `<link rel="canonical" href="${siteUrl}/" />\n    <meta property="og:url" content="${siteUrl}/" />`
@@ -18,6 +23,7 @@ export default defineConfig(({mode}) => {
     : './assets/images/1.jpeg';
 
   return {
+    base: normalizedBase,
     plugins: [
       react(),
       tailwindcss(),
