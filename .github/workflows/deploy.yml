@@ -1,0 +1,72 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://nghia3081.github.io/nhung-thu-dang-iu-danh-cho-cong-chua
+  SITE_BASE: /nhung-thu-dang-iu-danh-cho-cong-chua
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            2026/04/19/package-lock.json
+            2026/04/30/package-lock.json
+
+      - name: Build 2026/04/19
+        working-directory: 2026/04/19
+        env:
+          APP_URL: ${{ env.SITE_URL }}/2026/04/19
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build 2026/04/30
+        working-directory: 2026/04/30
+        env:
+          VITE_BASE_PATH: ${{ env.SITE_BASE }}/2026/04/30/
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble _site
+        run: |
+          mkdir -p _site/2026/03 _site/2026/04
+          cp index.html _site/
+          cp -R 2026/03/08 _site/2026/03/08
+          cp -R 2026/03/22 _site/2026/03/22
+          cp -R 2026/04/19/dist _site/2026/04/19
+          cp -R 2026/04/30/dist _site/2026/04/30
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

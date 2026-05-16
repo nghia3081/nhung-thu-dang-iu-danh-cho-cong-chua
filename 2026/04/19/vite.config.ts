@@ -31,8 +31,7 @@ export default defineConfig(({mode}) => {
       },
     ],
     build: {
-      outDir: path.resolve(__dirname, '..'),
-      emptyOutDir: false,
+      outDir: 'dist',
     },
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

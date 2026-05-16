@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+*.log
+
+# Local Pages assembly (created by GitHub Actions or local preview)
+/_site/
+
+# Pattern B build output (each project's vite.config.ts uses `outDir: 'dist'`)
+2026/**/dist/
+
+# Pattern B project deps (per-project .gitignore also covers these — listed here as a safety net)
+2026/**/node_modules/
+2026/**/.vite/
+2026/**/.env
+2026/**/.env.local
