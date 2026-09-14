@@ -31,6 +31,7 @@ jobs:
           cache-dependency-path: |
             2026/04/19/package-lock.json
             2026/04/30/package-lock.json
+            2026/05/19/package-lock.json
 
       - name: Build 2026/04/19
         working-directory: 2026/04/19
@@ -48,14 +49,24 @@ jobs:
           npm ci
           npm run build
 
+      - name: Build 2026/05/19
+        working-directory: 2026/05/19
+        env:
+          VITE_BASE_PATH: ${{ env.SITE_BASE }}/2026/05/19/
+        run: |
+          npm ci
+          npm run build
+
       - name: Assemble _site
         run: |
-          mkdir -p _site/2026/03 _site/2026/04
+          mkdir -p _site/2026/03 _site/2026/04 _site/2026/05 _site/2026/09
           cp index.html _site/
           cp -R 2026/03/08 _site/2026/03/08
           cp -R 2026/03/22 _site/2026/03/22
           cp -R 2026/04/19/dist _site/2026/04/19
           cp -R 2026/04/30/dist _site/2026/04/30
+          cp -R 2026/05/19/dist _site/2026/05/19
+          cp -R 2026/09/14 _site/2026/09/14
 
       - uses: actions/upload-pages-artifact@v3
         with:
